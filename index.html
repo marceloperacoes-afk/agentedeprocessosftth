@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agente de Processos FTTH — Governança & Campo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scroll-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-900 min-h-screen antialiased">
+
+  <!-- Notificações (Toast) -->
+  <div id="toast-box" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0 pointer-events-none"></div>
+
+  <!-- ===================================================================== -->
+  <!-- TELA 1: SELEÇÃO DE TÉCNICO / ENTRADA NO SISTEMA                       -->
+  <!-- ===================================================================== -->
+  <section id="tela-login" class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200 p-6 sm:p-8 space-y-6">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-bold text-lg shadow">
+            FTTH
+          </div>
+          <div>
+            <h1 class="text-lg font-bold text-slate-900">Agente de Processos</h1>
+            <p class="text-xs text-slate-500">Assistente Operacional • ITO FTTH</p>
+          </div>
+        </div>
+        <span id="badge-versao-login" class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+          ITO-FTTH v4.2
+        </span>
+      </div>
+
+      <!-- Status da conexão com Google Drive -->
+      <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-2xl px-3.5 py-2.5 text-xs">
+        <div class="flex items-center gap-2">
+          <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+          <span id="status-label" class="font-medium text-slate-700">Conectando ao Google Drive...</span>
+        </div>
+        <button type="button" onclick="carregarDadosRemotos()" class="text-blue-600 hover:text-blue-800 font-semibold">
+          Atualizar
+        </button>
+      </div>
+
+      <!-- Seleção do Técnico -->
+      <div class="space-y-4">
+        <div>
+          <label for="select-usuario" class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+            Selecione sua Matrícula / Técnico
+          </label>
+          <select id="select-usuario" class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </select>
+        </div>
+
+        <button type="button" onclick="entrarComoSelecionado()" class="w-full bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold py-3.5 px-4 rounded-2xl shadow-md transition">
+          Iniciar Atendimento em Campo
+        </button>
+      </div>
+
+      <!-- Acesso rápido ao Painel Administrativo -->
+      <div class="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+        <span class="text-xs text-slate-400">Gestão & Governança</span>
+        <button type="button" onclick="abrirPainelAdmin()" class="text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-3.5 py-2 rounded-xl transition">
+          Painel Administrador
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- TELA 2: APLICATIVO MOBILE DO TÉCNICO DE CAMPO                        -->
+  <!-- ===================================================================== -->
+  <section id="tela-tecnico" class="hidden min-h-screen flex flex-col max-w-2xl mx-auto bg-white shadow-2xl border-x border-slate-200">
+    <!-- Cabeçalho -->
+    <header class="sticky top-0 z-30 bg-slate-900 text-white px-4 py-3 flex items-center justify-between gap-2">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2">
+          <h2 id="tec-nome" class="text-sm font-bold truncate">Técnico</h2>
+          <span id="tec-versao-badge" class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-400/30">
+            ITO-FTTH v4.2
+          </span>
+        </div>
+        <p id="tec-detalhe" class="text-[11px] text-slate-400 truncate">Matrícula • Equipe</p>
+      </div>
+
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button type="button" onclick="abrirPainelAdmin()" class="text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl transition">
+          Admin
+        </button>
+        <button type="button" onclick="sairParaLogin()" class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-xl transition">
+          Sair
+        </button>
+      </div>
+    </header>
+
+    <!-- Abas de Navegação -->
+    <div class="grid grid-cols-3 bg-slate-50 border-b border-slate-200 p-1.5 gap-1.5 text-xs font-semibold">
+      <button type="button" id="btn-aba-chat" onclick="trocarAbaTecnico('chat')" class="py-2.5 px-2 rounded-xl bg-blue-600 text-white shadow-sm transition">
+        Chat ITO
+      </button>
+      <button type="button" id="btn-aba-alertas" onclick="trocarAbaTecnico('alertas')" class="py-2.5 px-2 rounded-xl text-slate-600 hover:bg-slate-200/70 transition flex items-center justify-center gap-1.5">
+        <span>Alertas</span>
+        <span id="tec-badge-alertas" class="hidden px-1.5 py-0.5 text-[10px] rounded-full bg-rose-600 text-white font-bold">0</span>
+      </button>
+      <button type="button" id="btn-aba-sugestoes" onclick="trocarAbaTecnico('sugestoes')" class="py-2.5 px-2 rounded-xl text-slate-600 hover:bg-slate-200/70 transition">
+        Sugestões
+      </button>
+    </div>
+
+    <!-- Banner de Alerta Pendente -->
+    <div id="tec-banner-alerta" class="hidden bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between gap-2">
+      <p class="text-xs text-amber-900 truncate">
+        <strong class="font-bold">Alerta pendente:</strong> <span id="tec-banner-texto">Nova atualização de procedimento</span>
+      </p>
+      <button type="button" onclick="trocarAbaTecnico('alertas')" class="shrink-0 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-xl">
+        Confirmar
+      </button>
+    </div>
+
+    <!-- ABA 1: CHAT COM O AGENTE ITO -->
+    <div id="aba-chat" class="flex-1 flex flex-col min-h-0">
+      <div id="chat-historico" class="flex-1 overflow-y-auto p-4 space-y-3.5 scroll-thin bg-slate-50/70"></div>
+
+      <!-- Atalhos Rápidos -->
+      <div class="px-3 py-2 bg-white border-t border-slate-100 flex gap-2 overflow-x-auto scroll-thin">
+        <button type="button" onclick="perguntarAtalho('Como passar e ancorar cabo drop?')" class="shrink-0 text-[11px] font-medium bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 px-3 py-1.5 rounded-full border border-slate-200">
+          Passagem de Drop
+        </button>
+        <button type="button" onclick="perguntarAtalho('Como instalar e provisionar a ONT?')" class="shrink-0 text-[11px] font-medium bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 px-3 py-1.5 rounded-full border border-slate-200">
+          Instalação ONT
+        </button>
+        <button type="button" onclick="perguntarAtalho('Qual a postura adequada com o cliente e quais ferramentas usar?')" class="shrink-0 text-[11px] font-medium bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 px-3 py-1.5 rounded-full border border-slate-200">
+          Postura & Ferramentas
+        </button>
+      </div>
+
+      <!-- Formulário de Envio -->
+      <form onsubmit="enviarPerguntaChat(event)" class="p-3 bg-white border-t border-slate-200 flex gap-2">
+        <input id="input-pergunta" type="text" placeholder="Digite sua dúvida sobre a ITO FTTH..." class="flex-1 rounded-2xl border border-slate-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" required />
+        <button type="submit" id="btn-enviar-pergunta" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-3 rounded-2xl shadow-sm transition shrink-0">
+          Enviar
+        </button>
+      </form>
+    </div>
+
+    <!-- ABA 2: ALERTAS E CONFIRMAÇÃO DE LEITURA -->
+    <div id="aba-alertas" class="hidden flex-1 overflow-y-auto p-4 space-y-3 scroll-thin bg-slate-50">
+      <div class="flex items-center justify-between">
+        <h3 class="text-sm font-bold text-slate-800">Alertas de Atualização da ITO</h3>
+        <span class="text-xs text-slate-500">Registro de ciência</span>
+      </div>
+      <div id="lista-alertas-tecnico" class="space-y-3"></div>
+    </div>
+
+    <!-- ABA 3: CANAL DE SUGESTÕES (GOVERNANÇA) -->
+    <div id="aba-sugestoes" class="hidden flex-1 overflow-y-auto p-4 space-y-4 scroll-thin bg-slate-50">
+      <form onsubmit="registrarSugestao(event)" class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900">Enviar Sugestão de Melhoria</h3>
+          <p class="text-xs text-slate-500">Encaminhada para análise e validação da equipe de governança.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Seção / Processo da ITO</label>
+            <input id="sug-topico" type="text" placeholder="Ex: Instalação de ONT" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Classificação</label>
+            <select id="sug-tipo" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs bg-white">
+              <option value="MELHORIA">Melhoria de Processo</option>
+              <option value="DIVERGENCIA_CAMPO">Ajuste de Campo</option>
+              <option value="LACUNA_ITO">Incluir na ITO</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Descrição da Sugestão</label>
+          <textarea id="sug-texto" rows="3" placeholder="Descreva o que pode ser aprimorado no procedimento..." class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3 rounded-xl shadow-sm transition">
+          Enviar Sugestão
+        </button>
+      </form>
+
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500">Minhas Sugestões</h4>
+        <div id="lista-sugestoes-tecnico" class="space-y-2.5"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- TELA 3: PAINEL DO ADMINISTRADOR (COM GESTÃO DE ACESSOS)              -->
+  <!-- ===================================================================== -->
+  <section id="tela-admin" class="hidden min-h-screen bg-slate-100 p-4 sm:p-6">
+    <div class="max-w-6xl mx-auto space-y-6">
+      <!-- Topo Admin -->
+      <div class="bg-slate-900 text-white rounded-3xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-300">Painel de Controle & Governança</span>
+          <h1 class="text-lg sm:text-xl font-bold mt-0.5">Gestão do Agente de Processos FTTH</h1>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" onclick="carregarDadosRemotos()" class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2.5 rounded-xl border border-slate-700">
+            Sincronizar Drive
+          </button>
+          <button type="button" onclick="irParaVisaoTecnico()" class="text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2.5 rounded-xl">
+            Visão do Técnico
+          </button>
+          <button type="button" onclick="sairParaLogin()" class="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-2.5 rounded-xl">
+            Sair
+          </button>
+        </div>
+      </div>
+
+      <!-- Abas do Administrador (Incluindo Gestão de Acessos) -->
+      <div class="flex gap-2 overflow-x-auto pb-1">
+        <button type="button" id="adm-btn-indicadores" onclick="trocarAbaAdmin('indicadores')" class="shrink-0 text-xs font-bold px-4 py-2.5 rounded-2xl bg-blue-600 text-white shadow-sm">
+          Indicadores & Gap
+        </button>
+        <button type="button" id="adm-btn-documentos" onclick="trocarAbaAdmin('documentos')" class="shrink-0 text-xs font-bold px-4 py-2.5 rounded-2xl bg-white text-slate-700 border border-slate-200 hover:bg-slate-50">
+          Documentos ITO
+        </button>
+        <button type="button" id="adm-btn-alertas" onclick="trocarAbaAdmin('alertas')" class="shrink-0 text-xs font-bold px-4 py-2.5 rounded-2xl bg-white text-slate-700 border border-slate-200 hover:bg-slate-50">
+          Alertas & Ciência
+        </button>
+        <button type="button" id="adm-btn-governanca" onclick="trocarAbaAdmin('governanca')" class="shrink-0 text-xs font-bold px-4 py-2.5 rounded-2xl bg-white text-slate-700 border border-slate-200 hover:bg-slate-50">
+          Governança
+        </button>
+        <button type="button" id="adm-btn-acessos" onclick="trocarAbaAdmin('acessos')" class="shrink-0 text-xs font-bold px-4 py-2.5 rounded-2xl bg-white text-slate-700 border border-slate-200 hover:bg-slate-50">
+          Gestão de Acessos
+        </button>
+      </div>
+
+      <!-- ADMIN ABA 1: INDICADORES -->
+      <div id="adm-aba-indicadores" class="space-y-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p class="text-xs font-semibold text-slate-500">Perguntas no Chat</p>
+            <p id="kpi-perguntas" class="text-2xl font-bold text-slate-900 mt-1">0</p>
+          </div>
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p class="text-xs font-semibold text-slate-500">Confirmações de Alerta</p>
+            <p id="kpi-confirmacoes" class="text-2xl font-bold text-emerald-600 mt-1">0</p>
+          </div>
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p class="text-xs font-semibold text-slate-500">Sugestões Pendentes</p>
+            <p id="kpi-pendentes" class="text-2xl font-bold text-amber-600 mt-1">0</p>
+          </div>
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+            <p class="text-xs font-semibold text-slate-500">Lacunas na ITO</p>
+            <p id="kpi-lacunas" class="text-2xl font-bold text-rose-600 mt-1">0</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <h3 class="text-sm font-bold text-slate-900">Lacunas / Dúvidas Não Encontradas na ITO</h3>
+            <div id="adm-lista-lacunas" class="space-y-2 text-xs"></div>
+          </div>
+          <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+            <h3 class="text-sm font-bold text-slate-900">Auditoria de Ciência (Alertas)</h3>
+            <div id="adm-lista-ciencia" class="space-y-2 text-xs"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADMIN ABA 2: DOCUMENTOS DE REFERÊNCIA ITO -->
+      <div id="adm-aba-documentos" class="hidden space-y-6">
+        <form onsubmit="uploadNovoDocumento(event)" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="sm:col-span-3">
+            <h3 class="text-sm font-bold text-slate-900">Upload de Documento ITO (Fonte de Resposta da IA)</h3>
+            <p class="text-xs text-slate-500">Envia o PDF para a pasta da ITO no Google Drive e define como versão vigente.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Versão da ITO</label>
+            <input id="adm-doc-versao" type="text" placeholder="Ex: ITO-FTTH v4.3" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Título do Documento</label>
+            <input id="adm-doc-titulo" type="text" placeholder="Procedimento Operacional Padrão FTTH" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Arquivo PDF</label>
+            <input id="adm-doc-arquivo" type="file" accept=".pdf" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs bg-slate-50" required />
+          </div>
+          <div class="flex items-end">
+            <button type="submit" id="btn-upload-doc" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3 rounded-xl shadow-sm">
+              Publicar ITO
+            </button>
+          </div>
+        </form>
+
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+          <h3 class="text-sm font-bold text-slate-900">Documentos Cadastrados</h3>
+          <div id="adm-lista-docs" class="space-y-2 text-xs"></div>
+        </div>
+      </div>
+
+      <!-- ADMIN ABA 3: ALERTAS -->
+      <div id="adm-aba-alertas" class="hidden space-y-6">
+        <form onsubmit="criarAlertaAdmin(event)" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="sm:col-span-3">
+            <h3 class="text-sm font-bold text-slate-900">Novo Alerta de Atualização de Processo</h3>
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Título</label>
+            <input id="adm-alt-titulo" type="text" placeholder="Ex: Atualização no padrão de ancoragem de cabo drop" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Seção da ITO</label>
+            <input id="adm-alt-secao" type="text" placeholder="Ex: Seção 3.1" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Descrição</label>
+            <input id="adm-alt-desc" type="text" placeholder="Detalhe da alteração para os técnicos..." class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required />
+          </div>
+          <div class="flex items-end">
+            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3 rounded-xl shadow-sm">
+              Disparar Alerta
+            </button>
+          </div>
+        </form>
+
+        <div id="adm-lista-alertas" class="space-y-3"></div>
+      </div>
+
+      <!-- ADMIN ABA 4: GOVERNANÇA DE SUGESTÕES -->
+      <div id="adm-aba-governanca" class="hidden space-y-3">
+        <div id="adm-lista-sugestoes" class="space-y-3"></div>
+      </div>
+
+      <!-- ADMIN ABA 5: GESTÃO DE ACESSOS DOS TÉCNICOS -->
+      <div id="adm-aba-acessos" class="hidden space-y-6">
+        <form onsubmit="cadastrarUsuarioAcesso(event)" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div class="sm:col-span-4">
+            <h3 class="text-sm font-bold text-slate-900">Cadastrar Técnico / Colaborador</h3>
+            <p class="text-xs text-slate-500">Gerencie quem pode acessar o aplicativo e sua equipe/perfil.</p>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Matrícula</label>
+            <input id="acc-matricula" type="text" placeholder="Ex: TEC-2010" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Nome Completo</label>
+            <input id="acc-nome" type="text" placeholder="Nome do técnico" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Equipe / Regional</label>
+            <input id="acc-equipe" type="text" placeholder="Ex: Equipe Centro - RJ" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Perfil</label>
+            <select id="acc-perfil" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs bg-white">
+              <option value="TECNICO">TECNICO</option>
+              <option value="SUPERVISOR">SUPERVISOR</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+          </div>
+          <div class="sm:col-span-4 flex justify-end">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-2.5 px-5 rounded-xl shadow-sm">
+              Adicionar Acesso
+            </button>
+          </div>
+        </form>
+
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+          <h3 class="text-sm font-bold text-slate-900">Usuários & Status de Acesso</h3>
+          <div id="adm-lista-usuarios" class="divide-y divide-slate-100 text-xs"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbwA2UEec8DgEf9ZoFzysjFnsyxlA8-cShpTkc7UEfPG07J42JdtmXBHTSCSqkDfppnWDA/exec";
+
+    const app = {
+      usuarioAtual: null,
+      usuarios: [
+        { matricula: "TEC-1042", nome: "Carlos Mendes", perfil: "TECNICO", equipe_regional: "Equipe Norte - RJ", status: "ATIVO" },
+        { matricula: "TEC-1089", nome: "Juliana Rocha", perfil: "TECNICO", equipe_regional: "Equipe Sul - RJ", status: "ATIVO" },
+        { matricula: "ADM-01", nome: "Gestor Operacional", perfil: "ADMIN", equipe_regional: "Qualidade & Engenharia", status: "ATIVO" }
+      ],
+      documentos: [
+        { doc_id: "DOC-001", codigo_versao: "ITO-FTTH v4.2", titulo: "Instrução Técnica Operacional FTTH", status: "VIGENTE", data_publicacao: "2026-11-24" }
+      ],
+      alertas: [
+        {
+          alerta_id: "ALT-2026-01",
+          titulo: "Padrão de limpeza óptica e teste de potência na CTO",
+          descricao: "Validar atenuação dentro da faixa e limpar conector antes de fechar a caixa.",
+          secao_ito: "Seção 4.2",
+          criticidade: "ALTA",
+          data_criacao: "2026-11-24",
+          ativo: "SIM"
+        }
+      ],
+      confirmacoes: [],
+      sugestoes: [
+        {
+          sugestao_id: "SUG-001",
+          data_envio: "2026-11-24 15:20",
+          matricula: "TEC-1042",
+          nome_tecnico: "Carlos Mendes",
+          secao_ito: "Seção 3.1 - Cabo Drop",
+          tipo: "MELHORIA",
+          descricao_sugestao: "Incluir exemplo visual de reserva técnica em fachada.",
+          status: "PENDENTE",
+          parecer_admin: ""
+        }
+      ],
+      logs: [],
+      mensagens: []
+    };
+
+    function toast(msg, cor = "info") {
+      const box = document.getElementById("toast-box");
+      if (!box) return;
+      const cores = {
+        ok: "bg-emerald-600 text-white",
+        erro: "bg-rose-600 text-white",
+        info: "bg-slate-900 text-white"
+      };
+      const el = document.createElement("div");
+      el.className = `${cores[cor] || cores.info} px-4 py-3 rounded-2xl shadow-lg text-xs font-medium pointer-events-auto`;
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 3800);
+    }
+
+    function versaoVigente() {
+      const doc = app.documentos.find(d => String(d.status).toUpperCase() === "VIGENTE") || app.documentos[0];
+      return (doc && doc.codigo_versao) || "ITO-FTTH v4.2";
+    }
+
+    function atualizarBadgesVersao() {
+      const v = versaoVigente();
+      const b1 = document.getElementById("badge-versao-login");
+      const b2 = document.getElementById("tec-versao-badge");
+      if (b1) b1.textContent = v;
+      if (b2) b2.textContent = v;
+    }
+
+    async function carregarDadosRemotos() {
+      const dot = document.getElementById("status-dot");
+      const lbl = document.getElementById("status-label");
+      if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse";
+      if (lbl) lbl.textContent = "Sincronizando com Google Drive...";
+
+      try {
+        const resp = await fetch(`${API_URL}?action=init`);
+        const data = await resp.json();
+        if (data && data.status === "ok") {
+          if (data.usuarios?.length) app.usuarios = data.usuarios;
+          if (data.documentos?.length) app.documentos = data.documentos;
+          if (data.alertas) app.alertas = data.alertas;
+          if (data.confirmacoes) app.confirmacoes = data.confirmacoes;
+          if (data.sugestoes) app.sugestoes = data.sugestoes;
+          if (data.logs) app.logs = data.logs;
+          if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
+          if (lbl) lbl.textContent = "Google Drive conectado";
+        } else {
+          throw new Error("Sem retorno ok");
+        }
+      } catch (_) {
+        if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-blue-500";
+        if (lbl) lbl.textContent = "Modo local / preview ativo";
+      }
+
+      popularSelectUsuarios();
+      atualizarBadgesVersao();
+      if (app.usuarioAtual) {
+        renderTecnico();
+        renderAdmin();
+      }
+    }
+
+    async function enviarPost(payload) {
+      try {
+        const resp = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+        return await resp.json();
+      } catch (_) {
+        return { status: "local" };
+      }
+    }
+
+    function popularSelectUsuarios() {
+      const sel = document.getElementById("select-usuario");
+      if (!sel) return;
+      const ativos = app.usuarios.filter(u => String(u.status || "ATIVO").toUpperCase() === "ATIVO");
+      sel.innerHTML = ativos.map(u =>
+        `<option value="${escAttr(u.matricula)}">${esc(u.nome)} (${esc(u.matricula)}) — ${esc(u.perfil)}</option>`
+      ).join("");
+    }
+
+    function entrarComoSelecionado() {
+      const mat = document.getElementById("select-usuario").value;
+      const user = app.usuarios.find(u => u.matricula === mat) || app.usuarios[0];
+      if (!user) return;
+      app.usuarioAtual = user;
+      if (String(user.perfil).toUpperCase() === "ADMIN") {
+        abrirPainelAdmin();
+      } else {
+        irParaVisaoTecnico();
+      }
+    }
+
+    function sairParaLogin() {
+      app.usuarioAtual = null;
+      document.getElementById("tela-tecnico").classList.add("hidden");
+      document.getElementById("tela-admin").classList.add("hidden");
+      document.getElementById("tela-login").classList.remove("hidden");
+    }
+
+    function irParaVisaoTecnico() {
+      if (!app.usuarioAtual || String(app.usuarioAtual.perfil).toUpperCase() === "ADMIN") {
+        app.usuarioAtual = app.usuarios.find(u => String(u.perfil).toUpperCase() === "TECNICO") || app.usuarios[0];
+      }
+      document.getElementById("tela-login").classList.add("hidden");
+      document.getElementById("tela-admin").classList.add("hidden");
+      document.getElementById("tela-tecnico").classList.remove("hidden");
+
+      document.getElementById("tec-nome").textContent = app.usuarioAtual.nome;
+      document.getElementById("tec-detalhe").textContent = `${app.usuarioAtual.matricula} • ${app.usuarioAtual.equipe_regional || "Campo FTTH"}`;
+
+      if (app.mensagens.length === 0) {
+        app.mensagens.push({
+          autor: "ia",
+          secao: versaoVigente(),
+          texto: `Olá, ${app.usuarioAtual.nome.split(" ")[0]}! Estou pronto para tirar dúvidas sobre procedimentos da ${versaoVigente()} (postura com cliente, ferramentas, sistemas, drop e ONT).`
+        });
+      }
+      renderTecnico();
+    }
+
+    function abrirPainelAdmin() {
+      document.getElementById("tela-login").classList.add("hidden");
+      document.getElementById("tela-tecnico").classList.add("hidden");
+      document.getElementById("tela-admin").classList.remove("hidden");
+      renderAdmin();
+    }
+
+    function trocarAbaTecnico(aba) {
+      ["chat", "alertas", "sugestoes"].forEach(nome => {
+        document.getElementById(`aba-${nome}`).classList.toggle("hidden", nome !== aba);
+        const btn = document.getElementById(`btn-aba-${nome}`);
+        if (nome === aba) {
+          btn.className = "py-2.5 px-2 rounded-xl bg-blue-600 text-white shadow-sm transition flex items-center justify-center gap-1.5";
+        } else {
+          btn.className = "py-2.5 px-2 rounded-xl text-slate-600 hover:bg-slate-200/70 transition flex items-center justify-center gap-1.5";
+        }
+      });
+    }
+
+    function renderTecnico() {
+      atualizarBadgesVersao();
+      renderChat();
+      renderAlertasTecnico();
+      renderSugestoesTecnico();
+    }
+
+    function renderChat() {
+      const box = document.getElementById("chat-historico");
+      if (!box) return;
+      box.innerHTML = app.mensagens.map(m => {
+        if (m.autor === "user") {
+          return `
+            <div class="flex justify-end">
+              <div class="bg-blue-600 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%] text-xs sm:text-sm shadow-sm">
+                ${esc(m.texto)}
+              </div>
+            </div>
+          `;
+        }
+        return `
+          <div class="flex justify-start">
+            <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-sm p-3.5 max-w-[90%] shadow-sm space-y-2">
+              <span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100">
+                ${esc(m.secao || versaoVigente())}
+              </span>
+              <p class="text-xs sm:text-sm text-slate-800 whitespace-pre-line leading-relaxed">${esc(m.texto)}</p>
+            </div>
+          </div>
+        `;
+      }).join("");
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function perguntarAtalho(texto) {
+      document.getElementById("input-pergunta").value = texto;
+      enviarPerguntaChat(new Event("submit"));
+    }
+
+    async function enviarPerguntaChat(e) {
+      e.preventDefault();
+      const input = document.getElementById("input-pergunta");
+      const btn = document.getElementById("btn-enviar-pergunta");
+      const pergunta = input.value.trim();
+      if (!pergunta) return;
+
+      app.mensagens.push({ autor: "user", texto: pergunta });
+      input.value = "";
+      renderChat();
+
+      btn.disabled = true;
+      btn.textContent = "...";
+
+      const resp = await enviarPost({
+        action: "perguntar_ia",
+        matricula: app.usuarioAtual?.matricula || "TEC",
+        pergunta
+      });
+
+      btn.disabled = false;
+      btn.textContent = "Enviar";
+
+      if (resp && resp.status === "ok" && resp.resultado) {
+        app.mensagens.push({
+          autor: "ia",
+          secao: resp.resultado.secao || versaoVigente(),
+          texto: resp.resultado.resposta
+        });
+        app.logs.unshift({
+          data_hora: new Date().toLocaleString("pt-BR"),
+          matricula: app.usuarioAtual.matricula,
+          pergunta_tecnico: pergunta,
+          secao_citada: resp.resultado.secao,
+          encontrou_na_ito: resp.resultado.encontrou ? "SIM" : "NAO"
+        });
+      } else {
+        const resLocal = responderLocal(pergunta);
+        app.mensagens.push({ autor: "ia", secao: resLocal.secao, texto: resLocal.resposta });
+        app.logs.unshift({
+          data_hora: new Date().toLocaleString("pt-BR"),
+          matricula: app.usuarioAtual.matricula,
+          pergunta_tecnico: pergunta,
+          secao_citada: resLocal.secao,
+          encontrou_na_ito: resLocal.encontrou ? "SIM" : "NAO"
+        });
+      }
+      renderChat();
+    }
+
+    function responderLocal(pergunta) {
+      const q = pergunta.toLowerCase();
+      if (q.includes("drop")) {
+        return {
+          secao: "Seção 3.1 — Lançamento de Cabo Drop",
+          resposta: "Respeite a altura mínima regulamentar e o raio de curvatura do cabo drop, fixando com ferragens adequadas e deixando reserva técnica organizada sem esmagamento."
+        };
+      }
+      if (q.includes("ont")) {
+        return {
+          secao: "Seção 5.2 — Instalação e Provisionamento de ONT",
+          resposta: "Posicione a ONT em local ventilado e próximo ao ponto de energia, limpe o conector óptico, valide o sinal dentro do padrão e confira o provisionamento no sistema antes de encerrar."
+        };
+      }
+      if (q.includes("postura") || q.includes("ferramenta") || q.includes("cliente")) {
+        return {
+          secao: "Seção 1.1 — Postura com o Cliente, Ferramentas e Sistemas",
+          resposta: "Mantenha postura cordial e transparente com o cliente, utilize os EPIs e ferramentas calibradas da ITO e atualize o status da ordem no sistema em cada etapa."
+        };
+      }
+      return {
+        secao: "NAO_ENCONTRADO",
+        resposta: "Não encontrei esse detalhe específico na ITO vigente. Você pode registrar esse ponto na aba Sugestões para avaliação da governança."
+      };
+    }
+
+    function renderAlertasTecnico() {
+      const lista = document.getElementById("lista-alertas-tecnico");
+      const badge = document.getElementById("tec-badge-alertas");
+      const banner = document.getElementById("tec-banner-alerta");
+      const bannerTxt = document.getElementById("tec-banner-texto");
+      if (!lista || !app.usuarioAtual) return;
+
+      const ativos = app.alertas.filter(a => String(a.ativo || "SIM").toUpperCase() === "SIM");
+      let pendentes = 0;
+      let primeiro = null;
+
+      lista.innerHTML = ativos.map(a => {
+        const conf = app.confirmacoes.find(c => c.alerta_id === a.alerta_id && c.matricula === app.usuarioAtual.matricula);
+        if (!conf) {
+          pendentes++;
+          if (!primeiro) primeiro = a;
+        }
+        return `
+          <div class="bg-white border ${conf ? "border-slate-200" : "border-amber-300"} rounded-2xl p-4 shadow-sm space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">${esc(a.secao_ito || "ITO")}</span>
+              <span class="text-[11px] text-slate-400">${esc(String(a.data_criacao || ""))}</span>
+            </div>
+            <h4 class="text-sm font-bold text-slate-900">${esc(a.titulo)}</h4>
+            <p class="text-xs text-slate-600">${esc(a.descricao)}</p>
+            <div class="pt-2 border-t border-slate-100">
+              ${conf
+                ? `<span class="text-xs font-semibold text-emerald-700">✓ Ciente confirmado em ${esc(String(conf.data_hora_ciencia))}</span>`
+                : `<button type="button" onclick="confirmarAlerta('${escAttr(a.alerta_id)}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl">Li e estou ciente</button>`
+              }
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      if (badge) {
+        badge.textContent = pendentes;
+        badge.classList.toggle("hidden", pendentes === 0);
+      }
+      if (banner) {
+        banner.classList.toggle("hidden", pendentes === 0);
+        if (primeiro && bannerTxt) bannerTxt.textContent = primeiro.titulo;
+      }
+    }
+
+    async function confirmarAlerta(alertaId) {
+      const agora = new Date().toLocaleString("pt-BR");
+      app.confirmacoes.push({
+        alerta_id: alertaId,
+        matricula: app.usuarioAtual.matricula,
+        nome_tecnico: app.usuarioAtual.nome,
+        data_hora_ciencia: agora
+      });
+      renderAlertasTecnico();
+      toast("Ciência registrada!", "ok");
+      await enviarPost({
+        action: "confirmar_leitura",
+        alerta_id: alertaId,
+        matricula: app.usuarioAtual.matricula,
+        nome_tecnico: app.usuarioAtual.nome
+      });
+    }
+
+    function renderSugestoesTecnico() {
+      const lista = document.getElementById("lista-sugestoes-tecnico");
+      if (!lista || !app.usuarioAtual) return;
+      const minhas = app.sugestoes.filter(s => s.matricula === app.usuarioAtual.matricula);
+      lista.innerHTML = minhas.length
+        ? minhas.map(s => `
+            <div class="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-bold text-slate-800">${esc(s.secao_ito)}</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">${esc(s.status)}</span>
+              </div>
+              <p class="text-xs text-slate-600">${esc(s.descricao_sugestao)}</p>
+              ${s.parecer_admin ? `<p class="text-[11px] text-blue-700 bg-blue-50 p-2 rounded-lg">Parecer: ${esc(s.parecer_admin)}</p>` : ""}
+            </div>
+          `).join("")
+        : `<p class="text-xs text-slate-400">Nenhuma sugestão enviada ainda.</p>`;
+    }
+
+    async function registrarSugestao(e) {
+      e.preventDefault();
+      const secao = document.getElementById("sug-topico").value.trim();
+      const tipo = document.getElementById("sug-tipo").value;
+      const desc = document.getElementById("sug-texto").value.trim();
+      if (!secao || !desc) return;
+
+      const item = {
+        sugestao_id: "SUG-" + Math.floor(100 + Math.random() * 900),
+        data_envio: new Date().toLocaleString("pt-BR"),
+        matricula: app.usuarioAtual.matricula,
+        nome_tecnico: app.usuarioAtual.nome,
+        secao_ito: secao,
+        tipo,
+        descricao_sugestao: desc,
+        status: "PENDENTE",
+        parecer_admin: ""
+      };
+      app.sugestoes.unshift(item);
+      document.getElementById("sug-topico").value = "";
+      document.getElementById("sug-texto").value = "";
+      renderSugestoesTecnico();
+      toast("Sugestão enviada para governança!", "ok");
+
+      await enviarPost({
+        action: "enviar_sugestao",
+        matricula: item.matricula,
+        nome_tecnico: item.nome_tecnico,
+        secao_ito: secao,
+        tipo,
+        descricao_sugestao: desc
+      });
+    }
+
+    function trocarAbaAdmin(aba) {
+      ["indicadores", "documentos", "alertas", "governanca", "acessos"].forEach(nome => {
+        document.getElementById(`adm-aba-${nome}`).classList.toggle("hidden", nome !== aba);
+        const btn = document.getElementById(`adm-btn-${nome}`);
+        if (nome === aba) {
+          btn.className = "shrink-0 text-xs font-bold px-4 py-2.5 rounded-2xl bg-blue-600 text-white shadow-sm";
+        } else {
+          btn.className = "shrink-0 text-xs font-bold px-4 py-2.5 rounded-2xl bg-white text-slate-700 border border-slate-200 hover:bg-slate-50";
+        }
+      });
+      renderAdmin();
+    }
+
+    function renderAdmin() {
+      const lacunas = app.logs.filter(l => String(l.encontrou_na_ito).toUpperCase() === "NAO");
+      const pendentes = app.sugestoes.filter(s => String(s.status).toUpperCase() === "PENDENTE");
+
+      document.getElementById("kpi-perguntas").textContent = app.logs.length;
+      document.getElementById("kpi-confirmacoes").textContent = app.confirmacoes.length;
+      document.getElementById("kpi-pendentes").textContent = pendentes.length;
+      document.getElementById("kpi-lacunas").textContent = lacunas.length;
+
+      document.getElementById("adm-lista-lacunas").innerHTML = lacunas.length
+        ? lacunas.slice(0, 6).map(l => `<div class="p-2.5 rounded-xl bg-rose-50 border border-rose-100">${esc(l.pergunta_tecnico)} <span class="text-slate-400">(${esc(l.matricula)})</span></div>`).join("")
+        : `<p class="text-slate-400">Nenhuma lacuna registrada.</p>`;
+
+      document.getElementById("adm-lista-ciencia").innerHTML = app.confirmacoes.length
+        ? app.confirmacoes.slice(-6).reverse().map(c => `<div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex justify-between"><span><strong>${esc(c.nome_tecnico)}</strong> • ${esc(c.alerta_id)}</span><span class="text-emerald-700">${esc(String(c.data_hora_ciencia))}</span></div>`).join("")
+        : `<p class="text-slate-400">Sem confirmações ainda.</p>`;
+
+      document.getElementById("adm-lista-docs").innerHTML = app.documentos.map(d => `
+        <div class="p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+          <div><strong class="text-slate-900">${esc(d.codigo_versao)}</strong> — ${esc(d.titulo)}</div>
+          <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full ${String(d.status).toUpperCase() === "VIGENTE" ? "bg-emerald-100 text-emerald-700" : "bg-slate-200 text-slate-600"}">${esc(d.status)}</span>
+        </div>
+      `).join("");
+
+      document.getElementById("adm-lista-alertas").innerHTML = app.alertas.map(a => {
+        const qtd = app.confirmacoes.filter(c => c.alerta_id === a.alerta_id).length;
+        return `
+          <div class="bg-white rounded-2xl p-4 border border-slate-200 flex items-center justify-between gap-3">
+            <div>
+              <p class="text-xs font-bold text-slate-900">${esc(a.titulo)} <span class="text-blue-600">(${esc(a.secao_ito)})</span></p>
+              <p class="text-xs text-slate-600 mt-0.5">${esc(a.descricao)}</p>
+            </div>
+            <span class="text-xs font-bold bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-xl shrink-0">${qtd} cientes</span>
+          </div>
+        `;
+      }).join("");
+
+      document.getElementById("adm-lista-sugestoes").innerHTML = app.sugestoes.map(s => `
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-900">${esc(s.secao_ito)} • ${esc(s.nome_tecnico)}</span>
+            <span class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">${esc(s.status)}</span>
+          </div>
+          <p class="text-xs text-slate-700">${esc(s.descricao_sugestao)}</p>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <input id="par-${escAttr(s.sugestao_id)}" type="text" value="${escAttr(s.parecer_admin || "")}" placeholder="Parecer da governança..." class="flex-1 rounded-xl border border-slate-300 px-3 py-2 text-xs" />
+            <button type="button" onclick="avaliarSug('${escAttr(s.sugestao_id)}', 'APROVADA')" class="bg-emerald-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl">Aprovar</button>
+            <button type="button" onclick="avaliarSug('${escAttr(s.sugestao_id)}', 'REPROVADA')" class="bg-rose-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl">Reprovar</button>
+          </div>
+        </div>
+      `).join("");
+
+      // Gestão de Acessos
+      document.getElementById("adm-lista-usuarios").innerHTML = app.usuarios.map(u => {
+        const ativo = String(u.status || "ATIVO").toUpperCase() === "ATIVO";
+        return `
+          <div class="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <p class="font-bold text-slate-900">${esc(u.nome)} <span class="text-slate-400 font-normal">(${esc(u.matricula)})</span></p>
+              <p class="text-[11px] text-slate-500">${esc(u.perfil)} • ${esc(u.equipe_regional || "Sem equipe")}</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-[10px] font-bold px-2.5 py-1 rounded-full ${ativo ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}">${ativo ? "ATIVO" : "BLOQUEADO"}</span>
+              <button type="button" onclick="alternarStatusUsuario('${escAttr(u.matricula)}')" class="text-xs font-semibold px-3 py-1.5 rounded-xl border border-slate-300 hover:bg-slate-50">
+                ${ativo ? "Bloquear" : "Ativar"}
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function cadastrarUsuarioAcesso(e) {
+      e.preventDefault();
+      const matricula = document.getElementById("acc-matricula").value.trim().toUpperCase();
+      const nome = document.getElementById("acc-nome").value.trim();
+      const equipe = document.getElementById("acc-equipe").value.trim();
+      const perfil = document.getElementById("acc-perfil").value;
+      if (!matricula || !nome) return;
+
+      const existente = app.usuarios.find(u => u.matricula === matricula);
+      if (existente) {
+        existente.nome = nome;
+        existente.equipe_regional = equipe;
+        existente.perfil = perfil;
+        existente.status = "ATIVO";
+      } else {
+        app.usuarios.push({ matricula, nome, equipe_regional: equipe, perfil, status: "ATIVO" });
+      }
+
+      document.getElementById("acc-matricula").value = "";
+      document.getElementById("acc-nome").value = "";
+      document.getElementById("acc-equipe").value = "";
+      popularSelectUsuarios();
+      renderAdmin();
+      toast(`Acesso de ${nome} salvo!`, "ok");
+    }
+
+    function alternarStatusUsuario(matricula) {
+      const u = app.usuarios.find(x => x.matricula === matricula);
+      if (!u) return;
+      u.status = String(u.status).toUpperCase() === "ATIVO" ? "BLOQUEADO" : "ATIVO";
+      popularSelectUsuarios();
+      renderAdmin();
+      toast(`Status de ${u.nome} alterado para ${u.status}.`, "ok");
+    }
+
+    async function uploadNovoDocumento(e) {
+      e.preventDefault();
+      const versao = document.getElementById("adm-doc-versao").value.trim();
+      const titulo = document.getElementById("adm-doc-titulo").value.trim();
+      const file = document.getElementById("adm-doc-arquivo").files[0];
+      if (!file) return;
+
+      const btn = document.getElementById("btn-upload-doc");
+      btn.disabled = true;
+      btn.textContent = "Enviando...";
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = reader.result.split(",")[1];
+        app.documentos.forEach(d => { if (d.status === "VIGENTE") d.status = "OBSOLETO"; });
+        app.documentos.unshift({
+          doc_id: "DOC-" + Math.floor(100 + Math.random() * 900),
+          codigo_versao: versao,
+          titulo,
+          status: "VIGENTE",
+          data_publicacao: new Date().toLocaleString("pt-BR")
+        });
+
+        await enviarPost({
+          action: "upload_ito",
+          codigo_versao: versao,
+          titulo,
+          file_name: file.name,
+          mime_type: file.type || "application/pdf",
+          file_base64: base64,
+          publicado_por: app.usuarioAtual?.matricula || "ADM-01"
+        });
+
+        btn.disabled = false;
+        btn.textContent = "Publicar ITO";
+        document.getElementById("adm-doc-versao").value = "";
+        document.getElementById("adm-doc-titulo").value = "";
+        document.getElementById("adm-doc-arquivo").value = "";
+        atualizarBadgesVersao();
+        renderAdmin();
+        toast(`${versao} publicada!`, "ok");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function criarAlertaAdmin(e) {
+      e.preventDefault();
+      const titulo = document.getElementById("adm-alt-titulo").value.trim();
+      const secao = document.getElementById("adm-alt-secao").value.trim();
+      const descricao = document.getElementById("adm-alt-desc").value.trim();
+
+      app.alertas.unshift({
+        alerta_id: "ALT-" + Math.floor(1000 + Math.random() * 9000),
+        titulo,
+        descricao,
+        secao_ito: secao,
+        criticidade: "ALTA",
+        data_criacao: new Date().toLocaleString("pt-BR"),
+        ativo: "SIM"
+      });
+
+      document.getElementById("adm-alt-titulo").value = "";
+      document.getElementById("adm-alt-secao").value = "";
+      document.getElementById("adm-alt-desc").value = "";
+      renderAdmin();
+      toast("Alerta disparado!", "ok");
+
+      await enviarPost({ action: "criar_alerta", titulo, descricao, secao_ito: secao, criticidade: "ALTA" });
+    }
+
+    async function avaliarSug(id, status) {
+      const parecer = document.getElementById(`par-${id}`)?.value.trim() || "";
+      const item = app.sugestoes.find(s => s.sugestao_id === id);
+      if (item) {
+        item.status = status;
+        item.parecer_admin = parecer;
+      }
+      renderAdmin();
+      toast(`Sugestão ${status}.`, "ok");
+
+      await enviarPost({ action: "avaliar_sugestao", sugestao_id: id, novo_status: status, parecer_admin: parecer });
+    }
+
+    function esc(v) {
+      return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    function escAttr(v) {
+      return String(v ?? "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+    }
+
+    popularSelectUsuarios();
+    atualizarBadgesVersao();
+    carregarDadosRemotos();
+  </script>
+</body>
+</html>
