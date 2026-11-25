@@ -16,7 +16,7 @@
 </head>
 <body class="bg-slate-100 text-slate-900 min-h-screen antialiased">
 
-  <!-- Notificações (Toast) -->
+  <!-- Notificações flutuantes (Toast) -->
   <div id="toast-box" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0 pointer-events-none"></div>
 
   <!-- ===================================================================== -->
@@ -224,7 +224,7 @@
         </div>
       </div>
 
-      <!-- Abas do Administrador (Incluindo Gestão de Acessos) -->
+      <!-- Abas do Administrador -->
       <div class="flex gap-2 overflow-x-auto pb-1">
         <button type="button" id="adm-btn-indicadores" onclick="trocarAbaAdmin('indicadores')" class="shrink-0 text-xs font-bold px-4 py-2.5 rounded-2xl bg-blue-600 text-white shadow-sm">
           Indicadores & Gap
@@ -278,10 +278,23 @@
 
       <!-- ADMIN ABA 2: DOCUMENTOS DE REFERÊNCIA ITO -->
       <div id="adm-aba-documentos" class="hidden space-y-6">
+        <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">Diagnóstico da Fonte ITO & IA</h3>
+              <p class="text-xs text-slate-500">Valide em 1 clique se o Apps Script está encontrando o documento da ITO no Drive e comunicando com o Gemini.</p>
+            </div>
+            <button type="button" id="btn-testar-ito" onclick="testarLeituraITO()" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-sm transition">
+              Testar Leitura da ITO
+            </button>
+          </div>
+          <div id="box-diagnostico-ito" class="hidden rounded-xl p-3.5 text-xs border"></div>
+        </div>
+
         <form onsubmit="uploadNovoDocumento(event)" class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="sm:col-span-3">
             <h3 class="text-sm font-bold text-slate-900">Upload de Documento ITO (Fonte de Resposta da IA)</h3>
-            <p class="text-xs text-slate-500">Envia o PDF para a pasta da ITO no Google Drive e define como versão vigente.</p>
+            <p class="text-xs text-slate-500">Envia o PDF, Word (.docx) ou TXT para a pasta da ITO no Google Drive e define como versão vigente.</p>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Versão da ITO</label>
@@ -292,8 +305,8 @@
             <input id="adm-doc-titulo" type="text" placeholder="Procedimento Operacional Padrão FTTH" class="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-xs" required />
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Arquivo PDF</label>
-            <input id="adm-doc-arquivo" type="file" accept=".pdf" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs bg-slate-50" required />
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Arquivo da ITO (PDF, DOCX ou TXT)</label>
+            <input id="adm-doc-arquivo" type="file" accept=".pdf,.docx,.txt" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-xs bg-slate-50" required />
           </div>
           <div class="flex items-end">
             <button type="submit" id="btn-upload-doc" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs py-3 rounded-xl shadow-sm">
@@ -384,8 +397,10 @@
   </section>
 
   <script>
+    // URL da API publicada no Google Apps Script
     const API_URL = "https://script.google.com/macros/s/AKfycbwA2UEec8DgEf9ZoFzysjFnsyxlA8-cShpTkc7UEfPG07J42JdtmXBHTSCSqkDfppnWDA/exec";
 
+    // Estado central da aplicação com dados iniciais para fallback seguro
     const app = {
       usuarioAtual: null,
       usuarios: [
@@ -425,6 +440,7 @@
       mensagens: []
     };
 
+    // Exibe avisos visuais sem usar alert()
     function toast(msg, cor = "info") {
       const box = document.getElementById("toast-box");
       if (!box) return;
@@ -453,6 +469,7 @@
       if (b2) b2.textContent = v;
     }
 
+    // Sincroniza dados reais da Planilha Google via Apps Script
     async function carregarDadosRemotos() {
       const dot = document.getElementById("status-dot");
       const lbl = document.getElementById("status-label");
@@ -472,7 +489,7 @@
           if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-500";
           if (lbl) lbl.textContent = "Google Drive conectado";
         } else {
-          throw new Error("Sem retorno ok");
+          throw new Error("Retorno inválido da API");
         }
       } catch (_) {
         if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-blue-500";
@@ -487,6 +504,7 @@
       }
     }
 
+    // Envia requisições POST (text/plain evita preflight CORS no Apps Script)
     async function enviarPost(payload) {
       try {
         const resp = await fetch(API_URL, {
@@ -494,9 +512,17 @@
           headers: { "Content-Type": "text/plain;charset=utf-8" },
           body: JSON.stringify(payload)
         });
-        return await resp.json();
-      } catch (_) {
-        return { status: "local" };
+        const texto = await resp.text();
+        try {
+          return JSON.parse(texto);
+        } catch (_) {
+          return {
+            status: "erro",
+            mensagem: "O Google Apps Script não retornou um JSON válido. Verifique se a implantação foi publicada como 'Qualquer pessoa' e atualizada para uma Nova Versão."
+          };
+        }
+      } catch (err) {
+        return { status: "erro_rede", mensagem: err.message || "Falha de conexão com a API do Drive." };
       }
     }
 
@@ -614,26 +640,36 @@
       const pergunta = input.value.trim();
       if (!pergunta) return;
 
+      const historicoRecente = app.mensagens.slice(-4).map(m => ({
+        autor: m.autor,
+        texto: m.texto
+      }));
+
       app.mensagens.push({ autor: "user", texto: pergunta });
       input.value = "";
       renderChat();
 
       btn.disabled = true;
-      btn.textContent = "...";
+      btn.textContent = "Lendo ITO...";
 
       const resp = await enviarPost({
         action: "perguntar_ia",
         matricula: app.usuarioAtual?.matricula || "TEC",
-        pergunta
+        pergunta,
+        historico: historicoRecente
       });
 
       btn.disabled = false;
       btn.textContent = "Enviar";
 
       if (resp && resp.status === "ok" && resp.resultado) {
+        const fonteLabel = resp.resultado.arquivo_lido
+          ? `${resp.resultado.secao || versaoVigente()} • ${resp.resultado.arquivo_lido}`
+          : (resp.resultado.secao || versaoVigente());
+
         app.mensagens.push({
           autor: "ia",
-          secao: resp.resultado.secao || versaoVigente(),
+          secao: fonteLabel,
           texto: resp.resultado.resposta
         });
         app.logs.unshift({
@@ -643,26 +679,115 @@
           secao_citada: resp.resultado.secao,
           encontrou_na_ito: resp.resultado.encontrou ? "SIM" : "NAO"
         });
+      } else if (resp && resp.status === "erro") {
+        app.mensagens.push({
+          autor: "ia",
+          secao: "Aviso de Leitura da ITO",
+          texto: `Não consegui consultar o documento oficial no Google Drive agora.\n\nDetalhe técnico: ${resp.mensagem}\n\nPeça ao Administrador para abrir "Documentos ITO > Testar Leitura da ITO".`
+        });
+        toast("Erro ao ler a ITO no Drive. Verifique o diagnóstico no Painel Admin.", "erro");
       } else {
         const resLocal = responderLocal(pergunta);
-        app.mensagens.push({ autor: "ia", secao: resLocal.secao, texto: resLocal.resposta });
-        app.logs.unshift({
-          data_hora: new Date().toLocaleString("pt-BR"),
-          matricula: app.usuarioAtual.matricula,
-          pergunta_tecnico: pergunta,
-          secao_citada: resLocal.secao,
-          encontrou_na_ito: resLocal.encontrou ? "SIM" : "NAO"
+        app.mensagens.push({
+          autor: "ia",
+          secao: `${resLocal.secao} (Modo Offline — Drive indisponível)`,
+          texto: resLocal.resposta
         });
       }
       renderChat();
     }
 
+    async function cadastrarUsuarioAcesso(e) {
+      e.preventDefault();
+      const matricula = document.getElementById("acc-matricula").value.trim().toUpperCase();
+      const nome = document.getElementById("acc-nome").value.trim();
+      const equipe = document.getElementById("acc-equipe").value.trim();
+      const perfil = document.getElementById("acc-perfil").value;
+      if (!matricula || !nome) return;
+
+      const existente = app.usuarios.find(u => u.matricula === matricula);
+      if (existente) {
+        existente.nome = nome;
+        existente.equipe_regional = equipe;
+        existente.perfil = perfil;
+        existente.status = "ATIVO";
+      } else {
+        app.usuarios.push({ matricula, nome, equipe_regional: equipe, perfil, status: "ATIVO" });
+      }
+
+      document.getElementById("acc-matricula").value = "";
+      document.getElementById("acc-nome").value = "";
+      document.getElementById("acc-equipe").value = "";
+      popularSelectUsuarios();
+      renderAdmin();
+      toast(`Acesso de ${nome} salvo!`, "ok");
+
+      await enviarPost({
+        action: "salvar_usuario",
+        matricula,
+        nome,
+        equipe_regional: equipe,
+        perfil
+      });
+    }
+
+    async function alternarStatusUsuario(matricula) {
+      const u = app.usuarios.find(x => x.matricula === matricula);
+      if (!u) return;
+      u.status = String(u.status).toUpperCase() === "ATIVO" ? "BLOQUEADO" : "ATIVO";
+      popularSelectUsuarios();
+      renderAdmin();
+      toast(`Status de ${u.nome} alterado para ${u.status}.`, "ok");
+
+      await enviarPost({
+        action: "alterar_status_usuario",
+        matricula: u.matricula,
+        status: u.status
+      });
+    }
+
+    async function testarLeituraITO() {
+      const btn = document.getElementById("btn-testar-ito");
+      const box = document.getElementById("box-diagnostico-ito");
+      if (!btn || !box) return;
+
+      btn.disabled = true;
+      btn.textContent = "Testando...";
+      box.className = "rounded-xl p-3.5 text-xs border bg-slate-50 border-slate-200 text-slate-700";
+      box.textContent = "Verificando acesso ao arquivo no Google Drive e chave do Gemini...";
+
+      try {
+        const resp = await fetch(`${API_URL}?action=diagnostico`);
+        const data = await resp.json();
+        if (data.status === "ok" && data.arquivo_encontrado && data.gemini_ok) {
+          box.className = "rounded-xl p-3.5 text-xs border bg-emerald-50 border-emerald-200 text-emerald-900 space-y-1";
+          box.innerHTML = `
+            <p class="font-bold">✓ Tudo funcionando! A IA está lendo a ITO corretamente.</p>
+            <p><strong>Arquivo:</strong> ${esc(data.detalhes.nome_arquivo)} (${esc(data.detalhes.tamanho_mb)})</p>
+            <p><strong>Origem:</strong> ${esc(data.detalhes.origem)} • <strong>Formato:</strong> ${esc(data.detalhes.formato)}</p>
+          `;
+        } else {
+          box.className = "rounded-xl p-3.5 text-xs border bg-rose-50 border-rose-200 text-rose-900 space-y-1";
+          box.innerHTML = `
+            <p class="font-bold">✗ Problema detectado na leitura da ITO:</p>
+            <p>${esc(data.mensagem || "Verifique a atualização do código no Apps Script.")}</p>
+          `;
+        }
+      } catch (err) {
+        box.className = "rounded-xl p-3.5 text-xs border bg-amber-50 border-amber-200 text-amber-900";
+        box.textContent = "Não foi possível contatar o Apps Script. Verifique se você reimplantou o código com 'Nova versão' e acesso liberado.";
+      }
+
+      btn.disabled = false;
+      btn.textContent = "Testar Leitura da ITO";
+    }
+
     function responderLocal(pergunta) {
-      const q = pergunta.toLowerCase();
-      if (q.includes("drop")) {
+      const q = String(pergunta || "").toLowerCase();
+      if (q.includes("drop") || q.includes("cabo") || q.includes("ancor")) {
         return {
-          secao: "Seção 3.1 — Lançamento de Cabo Drop",
-          resposta: "Respeite a altura mínima regulamentar e o raio de curvatura do cabo drop, fixando com ferragens adequadas e deixando reserva técnica organizada sem esmagamento."
+          secao: "Seção 3.1 — Lançamento e Ancoragem de Cabo Drop",
+          resposta: "Realize a ancoragem com alça pré-formada ou esticador homologado, respeite o raio mínimo de curvatura da fibra e deixe a reserva técnica acomodada conforme padrão."
         };
       }
       if (q.includes("ont")) {
@@ -863,7 +988,6 @@
         </div>
       `).join("");
 
-      // Gestão de Acessos
       document.getElementById("adm-lista-usuarios").innerHTML = app.usuarios.map(u => {
         const ativo = String(u.status || "ATIVO").toUpperCase() === "ATIVO";
         return `
@@ -881,41 +1005,6 @@
           </div>
         `;
       }).join("");
-    }
-
-    function cadastrarUsuarioAcesso(e) {
-      e.preventDefault();
-      const matricula = document.getElementById("acc-matricula").value.trim().toUpperCase();
-      const nome = document.getElementById("acc-nome").value.trim();
-      const equipe = document.getElementById("acc-equipe").value.trim();
-      const perfil = document.getElementById("acc-perfil").value;
-      if (!matricula || !nome) return;
-
-      const existente = app.usuarios.find(u => u.matricula === matricula);
-      if (existente) {
-        existente.nome = nome;
-        existente.equipe_regional = equipe;
-        existente.perfil = perfil;
-        existente.status = "ATIVO";
-      } else {
-        app.usuarios.push({ matricula, nome, equipe_regional: equipe, perfil, status: "ATIVO" });
-      }
-
-      document.getElementById("acc-matricula").value = "";
-      document.getElementById("acc-nome").value = "";
-      document.getElementById("acc-equipe").value = "";
-      popularSelectUsuarios();
-      renderAdmin();
-      toast(`Acesso de ${nome} salvo!`, "ok");
-    }
-
-    function alternarStatusUsuario(matricula) {
-      const u = app.usuarios.find(x => x.matricula === matricula);
-      if (!u) return;
-      u.status = String(u.status).toUpperCase() === "ATIVO" ? "BLOQUEADO" : "ATIVO";
-      popularSelectUsuarios();
-      renderAdmin();
-      toast(`Status de ${u.nome} alterado para ${u.status}.`, "ok");
     }
 
     async function uploadNovoDocumento(e) {
